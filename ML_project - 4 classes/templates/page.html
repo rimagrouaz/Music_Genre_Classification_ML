@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Genre Classification</title>
+    <link rel="stylesheet"  href="{{ url_for('static', filename='css/page.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+<body>
+    <div id="head">
+        <img src="{{ url_for('static', filename='logoo.png') }}" >
+        <h1>Reconnaissance de Genre Musical</h1>
+    </div>
+    <div id="fond">
+        <p>Bienvenue sur notre site ! </p> 
+        <p>Notre outil de détection vous permet d'identifier rapidement le genre musical d'un morceau. Que ce soit via un fichier audio que vous importez ou un lien YouTube, notre système analyse les caractéristiques sonores pour vous fournir un résultat précis et instantané.</p>
+    </div>
+    <div class="text-center mt-5">
+        <button id="uploadButton" class="btn btn-secondary btn-lg mx-2 ">Importer un audio</button>
+        <button id="youtubeButton" class="btn btn-secondary btn-lg mx-2">Lien YouTube</button>
+    </div>
+
+    <form action="/" method="POST" id="uploadSection" class="hidden"  enctype="multipart/form-data">
+        <input type="hidden" name="action" value="audio"> 
+        <div class="input-section">
+            <input type="file" id="audioInput" name="audioFile" accept="audio/*" style="width: max-content !important;">
+            <button id="detectAudioButton" class="btn btn-success btn-lg mx-2">Détecter genre</button>
+        </div>
+    </form>
+    <form action="/" method="POST" id="youtubeSection" class="hidden"  enctype="multipart/form-data">
+        <div class="input-section">
+            <input type="text" name="youtubeInput" id="youtubeInput" class="form-control" placeholder="Collez le lien YouTube ici"  style="width: 40%;">
+            <button id="fetchYoutubeButton" class="btn btn-dark btn-lg" style="margin-top: 2%;margin-left: 15%;">Rechercher</button>
+        </div>
+        <br><br>
+        <div id="youtubeDetails" class="hidden">
+            <h3 id="videoTitle"></h3>
+            <img id="videoThumbnail" alt="Thumbnail" style="margin-left: 3% !important;">
+            <br><br>
+            <button id="detectYoutubeButton" value="youtube" class="btn btn-success btn-lg mx-2" style="margin-left: 15% !important;">Détecter genre</button>
+        </div>
+    </form>
+    {% if prediction %}
+        <div class="alert alert-success mt-2" >
+            <h3 id="h3">Prédiction du genre musical :</h3>
+            <br>
+            <p id="p"><strong>Classe prédite :</strong> {{ prediction }}</p>
+            <p id="p"><strong>Probabilités :</strong> {{ proba }}%</p>
+            <div class="recommendations mt-4">
+                <p id="p"><strong>Recommandations YouTube du même genre musical :</strong></p>
+                <ul style="padding-left: 25%;">
+                    {% for link in recommendations %}
+                        <li><a href="{{ link }}" target="_blank">{{ link }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <a href="/" style="padding-left: 40%;">Refaire une prédiction</a>
+        </div>
+
+    {% endif %}
+    <script>
+        const API_KEY = "AIzaSyA_l0nnMWshlevTsrO0j9GjDLuFu_3lrF8";
+        const uploadButton = document.getElementById("uploadButton");
+        const youtubeButton = document.getElementById("youtubeButton");
+        const uploadSection = document.getElementById("uploadSection");
+        const youtubeSection = document.getElementById("youtubeSection");
+        const fetchYoutubeButton = document.getElementById("fetchYoutubeButton");
+        const youtubeDetails = document.getElementById("youtubeDetails");
+        const videoTitle = document.getElementById("videoTitle");
+        const videoThumbnail = document.getElementById("videoThumbnail");
+
+        uploadButton.addEventListener("click", () => {
+            uploadSection.classList.remove("hidden");
+            youtubeSection.classList.add("hidden");
+        });
+
+        youtubeButton.addEventListener("click", () => {
+            youtubeSection.classList.remove("hidden");
+            uploadSection.classList.add("hidden");
+        });
+
+        function extractVideoId(url) {
+            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        fetchYoutubeButton.addEventListener("click", async () => {
+            const youtubeLink = document.getElementById("youtubeInput").value;
+            const videoId = extractVideoId(youtubeLink);
+
+            if (videoId) {
+                try {
+                    const response = await fetch(
+                        `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${API_KEY}&part=snippet`
+                    );
+                    const data = await response.json();
+                    
+                    if (data.items.length > 0) {
+                        const video = data.items[0].snippet;
+                        videoTitle.textContent = video.title;
+                        videoThumbnail.src = video.thumbnails.high.url;
+                        youtubeDetails.classList.remove("hidden");
+                    } else {
+                        alert("Aucune vidéo trouvée pour ce lien.");
+                    }
+                } catch (error) {
+                    console.error("Erreur lors de la récupération des données :", error);
+                    alert("Une erreur s'est produite. Vérifiez votre connexion ou clé API.");
+                }
+            } else {
+                alert("Veuillez coller un lien YouTube valide.");
+            }
+        });
+    </script>
+
+</body>
+</html>
